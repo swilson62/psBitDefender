@@ -22,6 +22,7 @@ psBitDefender.py: Python script to provide adaptive top listing for BitDefender 
 changeLog(v1.15-beta00):
 - v1.15: Removed old thoughts.
 - Added GPL licensing requirements.
+- Fixed hard coded log file to use CWD.
 
 Thoughts:
 - Need to add code to copy log to an archive file and create new log file at 100k. Should make the
@@ -121,7 +122,8 @@ class BdProc(object):
 
 def main():
     # Intialize logging
-    logFilePathName = '/home/swilson/Documents/Scripts/Python/psBitDefender/psBitDefender.log'
+    cwd = os.getcwd()
+    logFilePathName = cwd + '/psBitDefender.log'
     if (os.path.exists(logFilePathName)) and (os.path.getsize(logFilePathName) > 100000):
         os.remove(logFilePathName)
     
