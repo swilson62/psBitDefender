@@ -27,6 +27,8 @@ changeLog(v1.15-beta00):
 Thoughts:
 - Need to add code to copy log to an archive file and create new log file at 100k. Should make the
 copy overwrite preexisting files, since 100k is enough to last well over 7 months, maybe a year.
+- Moved to another directory, and suddenly logging now fails. Cannot understand why. Probably
+something stupid and simple.
     
 
 Attributions:
