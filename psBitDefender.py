@@ -23,12 +23,17 @@ changeLog(v1.15-beta00):
 - v1.15: Removed old thoughts.
 - Added GPL licensing requirements.
 - Fixed hard coded log file to use CWD.
+- Fixed hard coded log file to use
+`/home/swilson/Documents/Coding/Python/psBitDefender/psBitDefender.log`.
+
 
 Thoughts:
 - Need to add code to copy log to an archive file and create new log file at 100k. Should make the
 copy overwrite preexisting files, since 100k is enough to last well over 7 months, maybe a year.
 - Moved to another directory, and suddenly logging now fails. Cannot understand why. Probably
-something stupid and simple.
+something stupid and simple. Problem was caused by running program from the command line in `~/`.
+Fixed temporarily by hardcoding CWD to be directory script is in. Might consider logging to
+`/var/log`, but that requires root permissions, or maybe using rsyslogd logging service.
     
 
 Attributions:
@@ -124,8 +129,8 @@ class BdProc(object):
 
 def main():
     # Intialize logging
-    cwd = os.getcwd()
-    logFilePathName = cwd + '/psBitDefender.log'
+    os.chdir('/home/swilson/Documents/Coding/Python/psBitDefender/')
+    logFilePathName = os.getcwd() + '/psBitDefender.log'
     if (os.path.exists(logFilePathName)) and (os.path.getsize(logFilePathName) > 100000):
         os.remove(logFilePathName)
     
