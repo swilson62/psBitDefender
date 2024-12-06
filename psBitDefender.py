@@ -19,12 +19,14 @@ Program Name: PS BitDefender
 
 psBitDefender.py: Python script to provide adaptive top listing for BitDefender tasks.
 
-changeLog(v1.15-beta00):
+changeLog(v1.15-beta01):
 - v1.15: Removed old thoughts.
 - Added GPL licensing requirements.
 - Fixed hard coded log file to use CWD.
 - Fixed hard coded log file to use
 `/home/swilson/Documents/Coding/Python/psBitDefender/psBitDefender.log`.
+- On upgrade to UBuntu Studio, new BD version loads 6 processes. Updated checks for this.
+- Updated logging output to reflect this when check fails.
 
 
 Thoughts:
@@ -57,17 +59,17 @@ class BdProc(object):
     def getPids(self):        
         """ 
         Returns PIDs used by bdsecd processes.
-        Obtain bdsecd pids, verify 3 pids, list in bdProcs, & return bdProcs
+        Obtain bdsecd pids, verify 6 pids, list in bdProcs, & return bdProcs
         """
         self.bdProcs = []
 
-        while len(self.bdProcs) != 3:
+        while len(self.bdProcs) != 6:
             for proc in psutil.process_iter(['name', 'pid']):
                 if proc.info['name'] == 'bdsecd':
                     self.bdProcs.append(proc.info['pid'])
 
-            if len(self.bdProcs) != 3:
-                logging.debug('Number of BD processes < 3. Will retry `getPids()`.')
+            if len(self.bdProcs) != 6:
+                logging.debug('Number of BD processes not 6. Will retry `getPids()`.')
                 self.bdProcs = []
                 time.sleep(3)
 
@@ -77,7 +79,8 @@ class BdProc(object):
         """
         myTop = psutil.Popen(
             ['top', f'-p {self.currBdProcs[0]}', f'-p {self.currBdProcs[1]}', 
-                f'-p {self.currBdProcs[2]}'])
+                f'-p {self.currBdProcs[2]}', f'-p {self.currBdProcs[3]}',
+                f'-p {self.currBdProcs[4]}', f'-p {self.currBdProcs[5]}'])
 
         return myTop
 
