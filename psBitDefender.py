@@ -19,7 +19,7 @@ Program Name: PS BitDefender
 
 psBitDefender.py: Python script to provide adaptive top listing for BitDefender tasks.
 
-changeLog(v1.15-beta01):
+changeLog(v1.15-beta02):
 - v1.15: Removed old thoughts.
 - Added GPL licensing requirements.
 - Fixed hard coded log file to use CWD.
@@ -27,6 +27,7 @@ changeLog(v1.15-beta01):
 `/home/swilson/Documents/Coding/Python/psBitDefender/psBitDefender.log`.
 - On upgrade to UBuntu Studio, new BD version loads 6 processes. Updated checks for this.
 - Updated logging output to reflect this when check fails.
+- Discovered on 12/29/24 that BD now loads 5 processes. Update checks & logging output.
 
 
 Thoughts:
@@ -36,6 +37,7 @@ copy overwrite preexisting files, since 100k is enough to last well over 7 month
 something stupid and simple. Problem was caused by running program from the command line in `~/`.
 Fixed temporarily by hardcoding CWD to be directory script is in. Might consider logging to
 `/var/log`, but that requires root permissions, or maybe using rsyslogd logging service.
+- Should probably re-write to determine the correct number of processes on start.
     
 
 Attributions:
@@ -59,17 +61,17 @@ class BdProc(object):
     def getPids(self):        
         """ 
         Returns PIDs used by bdsecd processes.
-        Obtain bdsecd pids, verify 6 pids, list in bdProcs, & return bdProcs
+        Obtain bdsecd pids, verify 5 pids, list in bdProcs, & return bdProcs
         """
         self.bdProcs = []
 
-        while len(self.bdProcs) != 6:
+        while len(self.bdProcs) != 5:
             for proc in psutil.process_iter(['name', 'pid']):
                 if proc.info['name'] == 'bdsecd':
                     self.bdProcs.append(proc.info['pid'])
 
-            if len(self.bdProcs) != 6:
-                logging.debug('Number of BD processes not 6. Will retry `getPids()`.')
+            if len(self.bdProcs) != 5:
+                logging.debug('Number of BD processes not 5. Will retry `getPids()`.')
                 self.bdProcs = []
                 time.sleep(3)
 
@@ -80,7 +82,7 @@ class BdProc(object):
         myTop = psutil.Popen(
             ['top', f'-p {self.currBdProcs[0]}', f'-p {self.currBdProcs[1]}', 
                 f'-p {self.currBdProcs[2]}', f'-p {self.currBdProcs[3]}',
-                f'-p {self.currBdProcs[4]}', f'-p {self.currBdProcs[5]}'])
+                f'-p {self.currBdProcs[4]}'])
 
         return myTop
 
