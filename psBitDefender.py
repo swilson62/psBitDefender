@@ -37,7 +37,11 @@ copy overwrite preexisting files, since 100k is enough to last well over 7 month
 something stupid and simple. Problem was caused by running program from the command line in `~/`.
 Fixed temporarily by hardcoding CWD to be directory script is in. Might consider logging to
 `/var/log`, but that requires root permissions, or maybe using rsyslogd logging service.
-- Should probably re-write to determine the correct number of processes on start.
+- Should probably re-write to determine the correct number of processes on start. One way to do
+this would be to have a default number of processes that only get changed if it takes longer than
+say 30 seconds for myTop to load. Having an incorrect default results in this. Default might need
+to survive script restart. To change, run getPids() without # of processes restriction, & save
+number as default. Just keep re-running this until it stabilizes.
     
 
 Attributions:
