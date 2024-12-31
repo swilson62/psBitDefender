@@ -43,6 +43,8 @@ this would be to have a default number of processes that only get changed if it 
 say 30 seconds for myTop to load. Having an incorrect default results in this. Default might need
 to survive script restart. To change, run getPids() without # of processes restriction, & save
 number as default. Just keep re-running this until it stabilizes.
+- Code required to get pcCnt from `psBD.cfg file added. Code to update default config saved in
+config file whenever number of processes change still needs to be added.
     
 
 Attributions:
