@@ -19,7 +19,7 @@ Program Name: PS BitDefender
 
 psBitDefender.py: Python script to provide adaptive top listing for BitDefender tasks.
 
-changeLog(v1.15-beta02):
+changeLog(v1.15-beta03):
 - v1.15: Removed old thoughts.
 - Added GPL licensing requirements.
 - Fixed hard coded log file to use CWD.
@@ -28,6 +28,7 @@ changeLog(v1.15-beta02):
 - On upgrade to UBuntu Studio, new BD version loads 6 processes. Updated checks for this.
 - Updated logging output to reflect this when check fails.
 - Discovered on 12/29/24 that BD now loads 5 processes. Update checks & logging output.
+- Reworked code to get num of processes from `psCnt=` line in `psBD.cfg` file.
 
 
 Thoughts:
@@ -62,40 +63,42 @@ class BdProc(object):
         self.bdProcs = []
         self.currBdProcs = []
         
-    def getPids(self):        
+    def getPids(self, psCnt):        
         """ 
         Returns PIDs used by bdsecd processes.
         Obtain bdsecd pids, verify 5 pids, list in bdProcs, & return bdProcs
         """
         self.bdProcs = []
 
-        while len(self.bdProcs) != 5:
+        while len(self.bdProcs) != psCnt:
             for proc in psutil.process_iter(['name', 'pid']):
                 if proc.info['name'] == 'bdsecd':
                     self.bdProcs.append(proc.info['pid'])
 
-            if len(self.bdProcs) != 5:
+            if len(self.bdProcs) != psCnt:
                 logging.debug('Number of BD processes not 5. Will retry `getPids()`.')
                 self.bdProcs = []
                 time.sleep(3)
 
-    def spawnTop(self):
+    def spawnTop(self, psCnt):
         """
         Spawn `top` as child to display all bdsecd process details & return that var for control
         """
-        myTop = psutil.Popen(
-            ['top', f'-p {self.currBdProcs[0]}', f'-p {self.currBdProcs[1]}', 
-                f'-p {self.currBdProcs[2]}', f'-p {self.currBdProcs[3]}',
-                f'-p {self.currBdProcs[4]}'])
+
+        topCmd = ['top']
+        for i in range(psCnt):
+            topCmd.append(f'-p {self.currBdProcs[i]}')
+
+        myTop = psutil.Popen(topCmd)
 
         return myTop
 
-    def reSpawnTop(self, myTop):
+    def reSpawnTop(self, myTop, psCnt):
         """
         Re-Spawn 'top' as child & return var as needed when processes change during upgrades
         """
         time.sleep(5)  # If removed for testing, don't forget to re-enable (causes high CPU!!!)
-        self.getPids()
+        self.getPids(psCnt)
         
         # Check for pid changes. If failures,  terminate with timeout or returncode checks.
         if self.bdProcs != self.currBdProcs:
@@ -130,7 +133,7 @@ class BdProc(object):
             
             # If checks pass, copy bpProcs to currBdProcs & spawn new top
             self.currBdProcs = self.bdProcs.copy()
-            myTop = self.spawnTop()
+            myTop = self.spawnTop(psCnt)
             logging.info('TOP has been re-initialized showing new BD processes.')
 
         return myTop
@@ -146,20 +149,30 @@ def main():
     logging.basicConfig(filename=logFilePathName, format='%(asctime)s <%(levelname)s>: %(message)s',
                         datefmt='%b %d %H:%M:%S', level=logging.DEBUG)
     logging.info('The `psBitDefender.py` script was initialized.')
+
+    # Get config & init config vars
+    cfgDict = {}
+    with open('psBD.cfg', 'r') as cfgFile:
+        for line in cfgFile.readlines():
+            if '=' in line:
+                key, value = line.strip().split('=', 1)
+                cfgDict[key] = value
+
+    psCnt = int(cfgDict['psCnt'])
     
     # Initialize BdProc instance, & populate process lists
     bdProc = BdProc()
-    bdProc.getPids()
+    bdProc.getPids(psCnt)
     bdProc.currBdProcs = bdProc.bdProcs.copy()
 
     # Spawn top to monitor bdsecd processes
-    myTop = bdProc.spawnTop()
+    myTop = bdProc.spawnTop(psCnt)
     logging.info('Initial TOP instance started.')
 
     try:
         while True:
             # Check for changes to pids & re-spawn as needed
-            myTop = bdProc.reSpawnTop(myTop)
+            myTop = bdProc.reSpawnTop(myTop, psCnt)
 
     except KeyboardInterrupt:
         # End while loop & kill myTop with keyboard interrupt
