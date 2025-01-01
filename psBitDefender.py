@@ -19,7 +19,7 @@ Program Name: PS BitDefender
 
 psBitDefender.py: Python script to provide adaptive top listing for BitDefender tasks.
 
-changeLog(v1.15-beta03):
+changeLog(v1.15.04):
 - v1.15: Removed old thoughts.
 - Added GPL licensing requirements.
 - Fixed hard coded log file to use CWD.
@@ -29,6 +29,7 @@ changeLog(v1.15-beta03):
 - Updated logging output to reflect this when check fails.
 - Discovered on 12/29/24 that BD now loads 5 processes. Update checks & logging output.
 - Reworked code to get num of processes from `psCnt=` line in `psBD.cfg` file.
+- Moved psCnt code into BdProc object to avoid having to pass it around so much.
 
 
 Thoughts:
@@ -45,6 +46,13 @@ to survive script restart. To change, run getPids() without # of processes restr
 number as default. Just keep re-running this until it stabilizes.
 - Code required to get pcCnt from `psBD.cfg file added. Code to update default config saved in
 config file whenever number of processes change still needs to be added.
+- The way I came up with to write new config to file was similar to:
+    with open('psBD.cfg', 'a')
+        for i in len(cfgList)
+            cfgFile.write(f'{list(cfgDict.items())[i][0]}={list(cfgDict.items())[i][1]}')
+If the psCnt changes from default, the `if len(self.bdProcs) != self.psCnt:` check will loop
+forever. Adding variable to count fails, rewrite psCnt both to memory & cfg file after 20 fails, &
+bailing might work to fix.
     
 
 Attributions:
@@ -64,43 +72,53 @@ class BdProc(object):
         """Initialize BdProc object list of processes"""
         self.bdProcs = []
         self.currBdProcs = []
-        
-    def getPids(self, psCnt):        
+
+        # Get config & init config vars
+        self.cfgDict = {}
+        with open('psBD.cfg', 'r') as cfgFile:
+            for line in cfgFile.readlines():
+                if '=' in line:
+                    key, value = line.strip().split('=', 1)
+                    self.cfgDict[key] = value
+
+        self.psCnt = int(self.cfgDict['psCnt'])
+    
+    def getPids(self):        
         """ 
         Returns PIDs used by bdsecd processes.
         Obtain bdsecd pids, verify 5 pids, list in bdProcs, & return bdProcs
         """
         self.bdProcs = []
 
-        while len(self.bdProcs) != psCnt:
+        while len(self.bdProcs) != self.psCnt:
             for proc in psutil.process_iter(['name', 'pid']):
                 if proc.info['name'] == 'bdsecd':
                     self.bdProcs.append(proc.info['pid'])
 
-            if len(self.bdProcs) != psCnt:
+            if len(self.bdProcs) != self.psCnt:
                 logging.debug('Number of BD processes not 5. Will retry `getPids()`.')
                 self.bdProcs = []
                 time.sleep(3)
 
-    def spawnTop(self, psCnt):
+    def spawnTop(self):
         """
         Spawn `top` as child to display all bdsecd process details & return that var for control
         """
 
         topCmd = ['top']
-        for i in range(psCnt):
+        for i in range(self.psCnt):
             topCmd.append(f'-p {self.currBdProcs[i]}')
 
         myTop = psutil.Popen(topCmd)
 
         return myTop
 
-    def reSpawnTop(self, myTop, psCnt):
+    def reSpawnTop(self, myTop):
         """
         Re-Spawn 'top' as child & return var as needed when processes change during upgrades
         """
         time.sleep(5)  # If removed for testing, don't forget to re-enable (causes high CPU!!!)
-        self.getPids(psCnt)
+        self.getPids()
         
         # Check for pid changes. If failures,  terminate with timeout or returncode checks.
         if self.bdProcs != self.currBdProcs:
@@ -135,7 +153,7 @@ class BdProc(object):
             
             # If checks pass, copy bpProcs to currBdProcs & spawn new top
             self.currBdProcs = self.bdProcs.copy()
-            myTop = self.spawnTop(psCnt)
+            myTop = self.spawnTop()
             logging.info('TOP has been re-initialized showing new BD processes.')
 
         return myTop
@@ -152,29 +170,19 @@ def main():
                         datefmt='%b %d %H:%M:%S', level=logging.DEBUG)
     logging.info('The `psBitDefender.py` script was initialized.')
 
-    # Get config & init config vars
-    cfgDict = {}
-    with open('psBD.cfg', 'r') as cfgFile:
-        for line in cfgFile.readlines():
-            if '=' in line:
-                key, value = line.strip().split('=', 1)
-                cfgDict[key] = value
-
-    psCnt = int(cfgDict['psCnt'])
-    
     # Initialize BdProc instance, & populate process lists
     bdProc = BdProc()
-    bdProc.getPids(psCnt)
+    bdProc.getPids()
     bdProc.currBdProcs = bdProc.bdProcs.copy()
 
     # Spawn top to monitor bdsecd processes
-    myTop = bdProc.spawnTop(psCnt)
+    myTop = bdProc.spawnTop()
     logging.info('Initial TOP instance started.')
 
     try:
         while True:
             # Check for changes to pids & re-spawn as needed
-            myTop = bdProc.reSpawnTop(myTop, psCnt)
+            myTop = bdProc.reSpawnTop(myTop)
 
     except KeyboardInterrupt:
         # End while loop & kill myTop with keyboard interrupt
