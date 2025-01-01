@@ -19,7 +19,7 @@ Program Name: PS BitDefender
 
 psBitDefender.py: Python script to provide adaptive top listing for BitDefender tasks.
 
-changeLog(v1.15.05):
+changeLog(v1.15.06):
 - v1.15: Removed old thoughts.
 - Added GPL licensing requirements.
 - Fixed hard coded log file to use CWD.
@@ -31,6 +31,7 @@ changeLog(v1.15.05):
 - Reworked code to get num of processes from `psCnt=` line in `psBD.cfg` file.
 - Moved psCnt code into BdProc object to avoid having to pass it around so much.
 - Moved myTop into the bdProc object to simplify working with it.
+- Added code to reconfigure default number of processes should `self.psCntLoopFailCnt` exceed 20.
 
 
 Thoughts:
@@ -54,6 +55,10 @@ config file whenever number of processes change still needs to be added.
 If the psCnt changes from default, the `if len(self.bdProcs) != self.psCnt:` check will loop
 forever. Adding variable to count fails, rewrite psCnt both to memory & cfg file after 20 fails, &
 bailing might work to fix.
+- `v1.15.06` has it working correctly when process is popped of the list. Fails on start when psCnt
+default is < actual number pf processes. Probably need to rewrite getPids and getAllPids (possibly
+by combining them) so that the iteration of processes is limited by psCnt unless the default has
+changed.
     
 
 Attributions:
@@ -83,6 +88,12 @@ class BdProc(object):
                     self.cfgDict[key] = value
 
         self.psCnt = int(self.cfgDict['psCnt'])
+        self.psCntLoopFailCnt = 0
+
+    def getAllPids(self):
+        for proc in psutil.process_iter(['name', 'pid']):
+            if proc.info['name'] == 'bdsecd':
+                self.bdProcs.append(proc.info['pid'])
     
     def getPids(self):        
         """ 
@@ -91,21 +102,40 @@ class BdProc(object):
         """
         self.bdProcs = []
 
+        # Populate self.BdProc with default number of processes
         while len(self.bdProcs) != self.psCnt:
-            for proc in psutil.process_iter(['name', 'pid']):
-                if proc.info['name'] == 'bdsecd':
-                    self.bdProcs.append(proc.info['pid'])
+            self.getAllPids()
 
+            # If number of processes not matching default, keep trying
             if len(self.bdProcs) != self.psCnt:
-                logging.debug('Number of BD processes not 5. Will retry `getPids()`.')
+                logging.debug('Number of BD processes incorrect. Will retry `getPids()`.')
                 self.bdProcs = []
-                time.sleep(3)
+                self.psCntLoopFailCnt += 1
+                
+                # More than 20 failures probably means change in default
+                if self.psCntLoopFailCnt >= 2:
+                    self.getAllPids()
+                    self.psCnt = len(self.bdProcs)
+                    self.cfgDict['psCnt'] = self.psCnt
+
+                    with open('psBD.cfg', 'w') as cfgFile:
+                        for i in range(len(self.cfgDict)):
+                            cfgFile.write(f'{list(self.cfgDict.items())[i][0]}={ \
+                                list(self.cfgDict.items())[i][1]}\n')
+
+                    logging.debug('Change in default number of processes required.')
+                    self.psCntLoopFailCnt = 0
+                
+                # Less than 20 probably means update not finished loading
+                self.psCntLoopFailCnt = 0
+                #time.sleep(3)
 
     def spawnTop(self):
         """
         Spawn `top` as child to display all bdsecd process details & return that var for control
         """
 
+        # Create topCmd list, populate processes, & load top
         topCmd = ['top']
         for i in range(self.psCnt):
             topCmd.append(f'-p {self.currBdProcs[i]}')
@@ -116,7 +146,7 @@ class BdProc(object):
         """
         Re-Spawn 'top' as child & return var as needed when processes change during upgrades
         """
-        time.sleep(5)  # If removed for testing, don't forget to re-enable (causes high CPU!!!)
+        #time.sleep(5)  # If removed for testing, don't forget to re-enable (causes high CPU!!!)
         self.getPids()
         
         # Check for pid changes. If failures,  terminate with timeout or returncode checks.
