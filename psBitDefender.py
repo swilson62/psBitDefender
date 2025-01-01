@@ -58,7 +58,7 @@ bailing might work to fix.
 - `v1.15.06` has it working correctly when process is popped of the list. Fails on start when psCnt
 default is < actual number pf processes. Probably need to rewrite getPids and getAllPids (possibly
 by combining them) so that the iteration of processes is limited by psCnt unless the default has
-changed.
+changed. This is sort of going back to the way it worked except on change.
     
 
 Attributions:
