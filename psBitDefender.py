@@ -19,7 +19,7 @@ Program Name: PS BitDefender
 
 psBitDefender.py: Python script to provide adaptive top listing for BitDefender tasks.
 
-changeLog(v1.15.04):
+changeLog(v1.15.05):
 - v1.15: Removed old thoughts.
 - Added GPL licensing requirements.
 - Fixed hard coded log file to use CWD.
@@ -30,6 +30,7 @@ changeLog(v1.15.04):
 - Discovered on 12/29/24 that BD now loads 5 processes. Update checks & logging output.
 - Reworked code to get num of processes from `psCnt=` line in `psBD.cfg` file.
 - Moved psCnt code into BdProc object to avoid having to pass it around so much.
+- Moved myTop into the bdProc object to simplify working with it.
 
 
 Thoughts:
@@ -109,11 +110,9 @@ class BdProc(object):
         for i in range(self.psCnt):
             topCmd.append(f'-p {self.currBdProcs[i]}')
 
-        myTop = psutil.Popen(topCmd)
+        self.myTop = psutil.Popen(topCmd)
 
-        return myTop
-
-    def reSpawnTop(self, myTop):
+    def reSpawnTop(self):
         """
         Re-Spawn 'top' as child & return var as needed when processes change during upgrades
         """
@@ -122,10 +121,10 @@ class BdProc(object):
         
         # Check for pid changes. If failures,  terminate with timeout or returncode checks.
         if self.bdProcs != self.currBdProcs:
-            myTop.terminate()
+            self.myTop.terminate()
             logging.info('Change in BD processes detected. TOP instance terminated')
             try:
-                myTop.wait(timeout=2)
+                self.myTop.wait(timeout=2)
             except psutil.TimeoutExpired:
                 """ Old logging code
                 logging.debug('TOP instance timed out while waiting for termination.')
@@ -133,16 +132,16 @@ class BdProc(object):
 
                 #""" This might be better:
                 logging.debug('TOP instance timed out while waiting for termination (extSts= ' \
-                        + psutil.Process(myTop.pid).status() + ').')
+                        + psutil.Process(self.myTop.pid).status() + ').')
                 #"""
                 
                 print('\nProcess TOP was asked to terminate, but timeout expired while waiting.')
                 print('\nCurrent process status of TOP on exit was: ' \
-                      + psutil.Process(myTop.pid).status() + '.')
+                      + psutil.Process(self.myTop.pid).status() + '.')
                
                 exit()
             
-            if myTop.returncode != 0:
+            if self.myTop.returncode != 0:
                 logging.debug('Unusual TOP return code of (' + str(myTop.returncode) +
                               ') causing exit.')
                 
@@ -153,10 +152,8 @@ class BdProc(object):
             
             # If checks pass, copy bpProcs to currBdProcs & spawn new top
             self.currBdProcs = self.bdProcs.copy()
-            myTop = self.spawnTop()
+            self.spawnTop()
             logging.info('TOP has been re-initialized showing new BD processes.')
-
-        return myTop
 
 
 def main():
@@ -176,17 +173,17 @@ def main():
     bdProc.currBdProcs = bdProc.bdProcs.copy()
 
     # Spawn top to monitor bdsecd processes
-    myTop = bdProc.spawnTop()
+    bdProc.spawnTop()
     logging.info('Initial TOP instance started.')
 
     try:
         while True:
             # Check for changes to pids & re-spawn as needed
-            myTop = bdProc.reSpawnTop(myTop)
+            bdProc.reSpawnTop()
 
     except KeyboardInterrupt:
         # End while loop & kill myTop with keyboard interrupt
-        myTop.terminate()
+        bdProc.myTop.terminate()
         logging.info('The `psBitDefender.py` script terminated by keyboard interrupt.')
         print('Caught keyboard interrupt.')
         exit()
