@@ -128,7 +128,7 @@ class BdProc(object):
                 
                 # Less than 20 probably means update not finished loading
                 self.psCntLoopFailCnt = 0
-                #time.sleep(3)
+                time.sleep(3)
 
     def spawnTop(self):
         """
@@ -146,7 +146,7 @@ class BdProc(object):
         """
         Re-Spawn 'top' as child & return var as needed when processes change during upgrades
         """
-        #time.sleep(5)  # If removed for testing, don't forget to re-enable (causes high CPU!!!)
+        time.sleep(5)  # If removed for testing, don't forget to re-enable (causes high CPU!!!)
         self.getPids()
         
         # Check for pid changes. If failures,  terminate with timeout or returncode checks.
