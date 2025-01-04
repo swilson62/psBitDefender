@@ -19,7 +19,7 @@ Program Name: PS BitDefender
 
 psBitDefender.py: Python script to provide adaptive top listing for BitDefender tasks.
 
-changeLog(v1.15.06):
+changeLog(v1.15.07):
 - v1.15: Removed old thoughts.
 - Added GPL licensing requirements.
 - Fixed hard coded log file to use CWD.
@@ -32,6 +32,8 @@ changeLog(v1.15.06):
 - Moved psCnt code into BdProc object to avoid having to pass it around so much.
 - Moved myTop into the bdProc object to simplify working with it.
 - Added code to reconfigure default number of processes should `self.psCntLoopFailCnt` exceed 20.
+- Moved code to change cfg file into changeCfg() in BdProc() class.
+- Added getAllPids() to rewrite cfg file & important vars `if self.psCnt == 0` & change detected.
 
 
 Thoughts:
@@ -89,20 +91,41 @@ class BdProc(object):
 
         self.psCnt = int(self.cfgDict['psCnt'])
         self.psCntLoopFailCnt = 0
+    
 
+    def changeCfg(self):
+        """ Change config file """
+        with open('psBD.cfg', 'w') as cfgFile:
+            for i in range(len(self.cfgDict)):
+                cfgFile.write(f'{list(self.cfgDict.items())[i][0]}={ \
+                    list(self.cfgDict.items())[i][1]}\n')
+    
+    
     def getAllPids(self):
+        """
+        Get all pids named `bdsecd`. If called with `self.psCnt == 0` make cfg file & var changes
+        if needed.
+        """
         for proc in psutil.process_iter(['name', 'pid']):
             if proc.info['name'] == 'bdsecd':
                 self.bdProcs.append(proc.info['pid'])
-    
+
+        # If called with `self.psCnt == 0` make cfg file & var changes if needed
+        if self.psCnt == 0:
+            if len(self.bdProcs) != int(self.cfgDict['psCnt']):
+                self.psCnt = self.cfgDict['psCnt'] = len(self.bdProcs)
+                self.changeCfg()
+            else:
+                self.psCnt = int(self.cfgDict['psCnt'])
+
+
     def getPids(self):        
         """ 
-        Returns PIDs used by bdsecd processes.
-        Obtain bdsecd pids, verify 5 pids, list in bdProcs, & return bdProcs
+        Manages PIDs used by bdsecd processes by approprately calling getAllPids().
         """
         self.bdProcs = []
 
-        # Populate self.BdProc with default number of processes
+        # Populate or re-populate self.BdProc
         while len(self.bdProcs) != self.psCnt:
             self.getAllPids()
 
@@ -113,38 +136,31 @@ class BdProc(object):
                 self.psCntLoopFailCnt += 1
                 
                 # More than 20 failures probably means change in default
-                if self.psCntLoopFailCnt >= 2:
+                if self.psCntLoopFailCnt >= 20:
+                    self.psCnt = 0
                     self.getAllPids()
-                    self.psCnt = len(self.bdProcs)
-                    self.cfgDict['psCnt'] = self.psCnt
-
-                    with open('psBD.cfg', 'w') as cfgFile:
-                        for i in range(len(self.cfgDict)):
-                            cfgFile.write(f'{list(self.cfgDict.items())[i][0]}={ \
-                                list(self.cfgDict.items())[i][1]}\n')
-
                     logging.debug('Change in default number of processes required.')
                     self.psCntLoopFailCnt = 0
+                    return
                 
-                # Less than 20 probably means update not finished loading
-                self.psCntLoopFailCnt = 0
+                # Less than 20 probably means update not finished loading. Sleep & try again.
                 time.sleep(3)
+
 
     def spawnTop(self):
         """
-        Spawn `top` as child to display all bdsecd process details & return that var for control
+        Create topCmd list, populate processes, & load top
         """
-
-        # Create topCmd list, populate processes, & load top
         topCmd = ['top']
         for i in range(self.psCnt):
             topCmd.append(f'-p {self.currBdProcs[i]}')
 
         self.myTop = psutil.Popen(topCmd)
 
+
     def reSpawnTop(self):
         """
-        Re-Spawn 'top' as child & return var as needed when processes change during upgrades
+        Terminate and respawn 'top' as child as needed when processes change during upgrades
         """
         time.sleep(5)  # If removed for testing, don't forget to re-enable (causes high CPU!!!)
         self.getPids()
@@ -199,7 +215,8 @@ def main():
 
     # Initialize BdProc instance, & populate process lists
     bdProc = BdProc()
-    bdProc.getPids()
+    bdProc.psCnt = 0
+    bdProc.getAllPids()
     bdProc.currBdProcs = bdProc.bdProcs.copy()
 
     # Spawn top to monitor bdsecd processes
