@@ -147,6 +147,7 @@ class BdProc(object):
                 # Less than 20 probably means update not finished loading. Sleep & try again.
                 time.sleep(3)
 
+            # Update completed sucessfully
             else:
                 self.psCntLoopFailCnt = 0
 
