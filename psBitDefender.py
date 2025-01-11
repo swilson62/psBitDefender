@@ -19,7 +19,7 @@ Program Name: PS BitDefender
 
 psBitDefender.py: Python script to provide adaptive top listing for BitDefender tasks.
 
-changeLog(v1.15.07):
+changeLog(v1.15.08):
 - v1.15: Removed old thoughts.
 - Added GPL licensing requirements.
 - Fixed hard coded log file to use CWD.
@@ -34,6 +34,7 @@ changeLog(v1.15.07):
 - Added code to reconfigure default number of processes should `self.psCntLoopFailCnt` exceed 20.
 - Moved code to change cfg file into changeCfg() in BdProc() class.
 - Added getAllPids() to rewrite cfg file & important vars `if self.psCnt == 0` & change detected.
+- Fixed bug introduced by not resetting `self.psCntLoopFailCnt = 0` after update success.
 
 
 Thoughts:
@@ -145,6 +146,9 @@ class BdProc(object):
                 
                 # Less than 20 probably means update not finished loading. Sleep & try again.
                 time.sleep(3)
+
+            else:
+                self.psCntLoopFailCnt = 0
 
 
     def spawnTop(self):
