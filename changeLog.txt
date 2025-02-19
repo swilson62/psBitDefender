@@ -1,10 +1,10 @@
 changeLog(v1.16):
-- Removed internal changeLog & thoughts
+- Removed internal changeLog & thoughts.
 - Cleaned up code.
 - Added `changeLog.txt file.
 
 changeLog(v1.15):
-- Removed internal changeLog & thoughts
+- Removed internal changeLog & thoughts.
 - Added GPL licensing requirements.
 - Fixed hard coded log file to use CWD.
 - Fixed hard coded log file to use
