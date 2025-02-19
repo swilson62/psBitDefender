@@ -19,8 +19,8 @@ Program Name: PS BitDefender
 
 psBitDefender.py: Python script to provide adaptive top listing for BitDefender tasks.
 
-changeLog(v1.15.08):
-- v1.16: Removed old changeLog & thoughts.
+changeLog(v1.16):
+- Removed old changeLog & thoughts.
 - Cleaned up code.
 
 
