@@ -1,0 +1,19 @@
+changeLog(v1.16):
+- Added GPL licensing requirements.
+- Fixed hard coded log file to use CWD.
+- Fixed hard coded log file to use
+`/home/swilson/Documents/Coding/Python/psBitDefender/psBitDefender.log`.
+- On upgrade to UBuntu Studio, new BD version loads 6 processes. Updated checks for this.
+- Updated logging output to reflect this when check fails.
+- Discovered on 12/29/24 that BD now loads 5 processes. Update checks & logging output.
+- Reworked code to get num of processes from `psCnt=` line in `psBD.cfg` file.
+- Moved psCnt code into BdProc object to avoid having to pass it around so much.
+- Moved myTop into the bdProc object to simplify working with it.
+- Added code to reconfigure default number of processes should `self.psCntLoopFailCnt` exceed 20.
+- Moved code to change cfg file into changeCfg() in BdProc() class.
+- Added getAllPids() to rewrite cfg file & important vars `if self.psCnt == 0` & change detected.
+- Fixed bug introduced by not resetting `self.psCntLoopFailCnt = 0` after update success.
+- Removed old thoughts and
+- v1.16: Removed old changeLog & thoughts.
+- Cleaned up code.
+- Added `changeLog.txt file.
