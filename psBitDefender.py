@@ -20,49 +20,12 @@ Program Name: PS BitDefender
 psBitDefender.py: Python script to provide adaptive top listing for BitDefender tasks.
 
 changeLog(v1.15.08):
-- v1.15: Removed old thoughts.
-- Added GPL licensing requirements.
-- Fixed hard coded log file to use CWD.
-- Fixed hard coded log file to use
-`/home/swilson/Documents/Coding/Python/psBitDefender/psBitDefender.log`.
-- On upgrade to UBuntu Studio, new BD version loads 6 processes. Updated checks for this.
-- Updated logging output to reflect this when check fails.
-- Discovered on 12/29/24 that BD now loads 5 processes. Update checks & logging output.
-- Reworked code to get num of processes from `psCnt=` line in `psBD.cfg` file.
-- Moved psCnt code into BdProc object to avoid having to pass it around so much.
-- Moved myTop into the bdProc object to simplify working with it.
-- Added code to reconfigure default number of processes should `self.psCntLoopFailCnt` exceed 20.
-- Moved code to change cfg file into changeCfg() in BdProc() class.
-- Added getAllPids() to rewrite cfg file & important vars `if self.psCnt == 0` & change detected.
-- Fixed bug introduced by not resetting `self.psCntLoopFailCnt = 0` after update success.
+- v1.16: Removed old chengeLog & thoughts.
+- Cleaned up code.
 
 
 Thoughts:
-- Need to add code to copy log to an archive file and create new log file at 100k. Should make the
-copy overwrite preexisting files, since 100k is enough to last well over 7 months, maybe a year.
-- Moved to another directory, and suddenly logging now fails. Cannot understand why. Probably
-something stupid and simple. Problem was caused by running program from the command line in `~/`.
-Fixed temporarily by hardcoding CWD to be directory script is in. Might consider logging to
-`/var/log`, but that requires root permissions, or maybe using rsyslogd logging service.
-- Should probably re-write to determine the correct number of processes on start. One way to do
-this would be to have a default number of processes that only get changed if it takes longer than
-say 30 seconds for myTop to load. Having an incorrect default results in this. Default might need
-to survive script restart. To change, run getPids() without # of processes restriction, & save
-number as default. Just keep re-running this until it stabilizes.
-- Code required to get pcCnt from `psBD.cfg file added. Code to update default config saved in
-config file whenever number of processes change still needs to be added.
-- The way I came up with to write new config to file was similar to:
-    with open('psBD.cfg', 'a')
-        for i in len(cfgList)
-            cfgFile.write(f'{list(cfgDict.items())[i][0]}={list(cfgDict.items())[i][1]}')
-If the psCnt changes from default, the `if len(self.bdProcs) != self.psCnt:` check will loop
-forever. Adding variable to count fails, rewrite psCnt both to memory & cfg file after 20 fails, &
-bailing might work to fix.
-- `v1.15.06` has it working correctly when process is popped of the list. Fails on start when psCnt
-default is < actual number pf processes. Probably need to rewrite getPids and getAllPids (possibly
-by combining them) so that the iteration of processes is limited by psCnt unless the default has
-changed. This is sort of going back to the way it worked except on change.
-    
+
 
 Attributions:
 - 
@@ -75,14 +38,17 @@ import psutil, time, logging, os
 
 class BdProc(object):
     """
-    Represents bdsecd processes & top listing of same
+    Object representing functions & configuration required to produce adaptive top listing of
+    bdsecd processes.
     """
     def __init__(self):
-        """Initialize BdProc object list of processes"""
+        """
+        Function to Initialize BdProc object list of processes, & configuration 
+        dictionary/variables from config file.
+        """
         self.bdProcs = []
         self.currBdProcs = []
 
-        # Get config & init config vars
         self.cfgDict = {}
         with open('psBD.cfg', 'r') as cfgFile:
             for line in cfgFile.readlines():
@@ -95,7 +61,9 @@ class BdProc(object):
     
 
     def changeCfg(self):
-        """ Change config file """
+        """
+        Function to change config file as needed
+        """
         with open('psBD.cfg', 'w') as cfgFile:
             for i in range(len(self.cfgDict)):
                 cfgFile.write(f'{list(self.cfgDict.items())[i][0]}={ \
@@ -104,14 +72,13 @@ class BdProc(object):
     
     def getAllPids(self):
         """
-        Get all pids named `bdsecd`. If called with `self.psCnt == 0` make cfg file & var changes
-        if needed.
+        Function to get all pids named `bdsecd`. If called with `self.psCnt == 0` make cfg file &
+        dictionarly/variable changes as needed.
         """
         for proc in psutil.process_iter(['name', 'pid']):
             if proc.info['name'] == 'bdsecd':
                 self.bdProcs.append(proc.info['pid'])
 
-        # If called with `self.psCnt == 0` make cfg file & var changes if needed
         if self.psCnt == 0:
             if len(self.bdProcs) != int(self.cfgDict['psCnt']):
                 self.psCnt = self.cfgDict['psCnt'] = len(self.bdProcs)
@@ -170,21 +137,17 @@ class BdProc(object):
         time.sleep(5)  # If removed for testing, don't forget to re-enable (causes high CPU!!!)
         self.getPids()
         
-        # Check for pid changes. If failures,  terminate with timeout or returncode checks.
+        # Check for pid changes & terminate myTop on change.
         if self.bdProcs != self.currBdProcs:
             self.myTop.terminate()
             logging.info('Change in BD processes detected. TOP instance terminated')
             try:
                 self.myTop.wait(timeout=2)
-            except psutil.TimeoutExpired:
-                """ Old logging code
-                logging.debug('TOP instance timed out while waiting for termination.')
-                """
 
-                #""" This might be better:
+            # If termination failures, printout failure info & end script.
+            except psutil.TimeoutExpired:
                 logging.debug('TOP instance timed out while waiting for termination (extSts= ' \
                         + psutil.Process(self.myTop.pid).status() + ').')
-                #"""
                 
                 print('\nProcess TOP was asked to terminate, but timeout expired while waiting.')
                 print('\nCurrent process status of TOP on exit was: ' \
