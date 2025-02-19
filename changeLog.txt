@@ -13,7 +13,6 @@ changeLog(v1.16):
 - Moved code to change cfg file into changeCfg() in BdProc() class.
 - Added getAllPids() to rewrite cfg file & important vars `if self.psCnt == 0` & change detected.
 - Fixed bug introduced by not resetting `self.psCntLoopFailCnt = 0` after update success.
-- Removed old thoughts and
 - v1.16: Removed old changeLog & thoughts.
 - Cleaned up code.
 - Added `changeLog.txt file.
