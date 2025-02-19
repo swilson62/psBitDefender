@@ -22,6 +22,7 @@ psBitDefender.py: Python script to provide adaptive top listing for BitDefender 
 changeLog(v1.16):
 - Removed old changeLog & thoughts.
 - Cleaned up code.
+- Added `changeLog.txt file.
 
 
 Thoughts:
