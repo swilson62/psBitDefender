@@ -1,3 +1,6 @@
+changeLog(v1.16.01):
+- Added proper signal handler for keyboard interrupt termination & all other signals.
+
 changeLog(v1.16):
 - Removed internal changeLog & thoughts.
 - Cleaned up code.

@@ -19,10 +19,8 @@ Program Name: PS BitDefender
 
 psBitDefender.py: Python script to provide adaptive top listing for BitDefender tasks.
 
-changeLog(v1.16):
-- Removed old changeLog & thoughts.
-- Cleaned up code.
-- Added `changeLog.txt file.
+changeLog(v1.16.01):
+- Added proper signal handler for keyboard interrupt termination & all other signals.
 
 
 Thoughts:
@@ -34,7 +32,7 @@ Attributions:
 """
 
 # Imports
-import psutil, time, logging, os
+import psutil, time, logging, os, signal
 
 
 class BdProc(object):
@@ -172,6 +170,39 @@ class BdProc(object):
 
 
 def main():
+    #Initialize signal handlers
+    def receiveSignal(signum, frame):
+        # Handle interrupts
+        if signum > 0:
+            # End while loop & kill myTop on all signals
+            bdProc.myTop.terminate()
+    
+            # Handling for specific signals
+            if signum == 1:
+                logging.info('The `psBitDefender.py` script terminated by SIGHUP.')
+                exit()
+            if signum == 2:
+                logging.info('The `psBitDefender.py` script terminated by keyboard interrupt.')
+                print('Caught keyboard interrupt.')
+                exit()
+            if signum == 17:
+                # SIGCHLD sent to parent on close. No logging needed.
+                pass
+            
+            # And log the rest
+            else:
+                logging.info(f'Signal {signal.Signals(signum).name} received, causing termination.')
+                exit()
+
+    # Set traps for interrupts
+    for sigNumber in range(1, signal.NSIG):
+        try:
+            # Skip SIGKILL and SIGSTOP
+            if sigNumber not in (signal.SIGKILL, signal.SIGSTOP, 32, 33):
+                signal.signal(sigNumber, receiveSignal)
+        except OSError:
+            print(f"Signal {sigNumber} cannot be caught")
+
     # Intialize logging
     os.chdir('/home/swilson/Documents/Coding/Python/psBitDefender/')
     logFilePathName = os.getcwd() + '/psBitDefender.log'
@@ -192,17 +223,19 @@ def main():
     bdProc.spawnTop()
     logging.info('Initial TOP instance started.')
 
-    try:
-        while True:
-            # Check for changes to pids & re-spawn as needed
-            bdProc.reSpawnTop()
+    #try:
+    while True:
+        # Check for changes to pids & re-spawn as needed
+        bdProc.reSpawnTop()
 
+    """
     except KeyboardInterrupt:
         # End while loop & kill myTop with keyboard interrupt
         bdProc.myTop.terminate()
         logging.info('The `psBitDefender.py` script terminated by keyboard interrupt.')
         print('Caught keyboard interrupt.')
         exit()
+    """
 
 
 if __name__ == '__main__':
