@@ -24,6 +24,7 @@ changeLog(v1.16.02):
 - Rewrote signal handling to only terminate on SIGHUP or SIGINT.
 - Stopped logging for SIGCHLD, & SIGWINCH
 - Logging for the rest without termination.
+- Resolved bug by hardcoding full pathname for cfg file.
 
 Thoughts:
 - 
@@ -49,9 +50,10 @@ class BdProc(object):
         """
         self.bdProcs = []
         self.currBdProcs = []
+        self.cfgFilePath = '/home/swilson/Documents/Coding/Python/psBitDefender/'
 
         self.cfgDict = {}
-        with open('psBD.cfg', 'r') as cfgFile:
+        with open(os.path.join(self.cfgFilePath, 'psBD.cfg'), 'r') as cfgFile:
             for line in cfgFile.readlines():
                 if '=' in line:
                     key, value = line.strip().split('=', 1)
@@ -65,7 +67,7 @@ class BdProc(object):
         """
         Function to change config file as needed
         """
-        with open('psBD.cfg', 'w') as cfgFile:
+        with open(os.path.join(self.cfgFilePath, 'psBD.cfg'), 'w') as cfgFile:
             for i in range(len(self.cfgDict)):
                 cfgFile.write(f'{list(self.cfgDict.items())[i][0]}={ \
                     list(self.cfgDict.items())[i][1]}\n')
