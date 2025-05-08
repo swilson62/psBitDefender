@@ -21,6 +21,7 @@ psBitDefender.py: Python script to provide adaptive top listing for BitDefender 
 
 changeLog(v1.16.03):
 - Rewrote signal handler to get handling details from cfgFile.
+- Removed unneeded CSV import.
 
 Thoughts:
 - 
