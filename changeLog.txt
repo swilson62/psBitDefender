@@ -1,3 +1,6 @@
+changeLog(v1.16.03):
+- Rewrote signal handler to get handling details from cfgFile.
+
 changeLog(v1.16.02):
 - Moved signal handler to object in bdProc() class.
 - Rewrote signal handling to only terminate on SIGHUP or SIGINT.

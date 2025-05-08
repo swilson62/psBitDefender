@@ -19,12 +19,8 @@ Program Name: PS BitDefender
 
 psBitDefender.py: Python script to provide adaptive top listing for BitDefender tasks.
 
-changeLog(v1.16.02):
-- Moved signal handler to object in bdProc() class.
-- Rewrote signal handling to only terminate on SIGHUP or SIGINT.
-- Stopped logging for SIGCHLD, & SIGWINCH
-- Logging for the rest without termination.
-- Resolved bug by hardcoding full pathname for cfg file.
+changeLog(v1.16.03):
+- Rewrote signal handler to get handling details from cfgFile.
 
 Thoughts:
 - 
@@ -35,7 +31,7 @@ Attributions:
 """
 
 # Imports
-import psutil, time, logging, os, signal
+import psutil, time, logging, os, signal, csv
 
 
 class BdProc(object):
@@ -175,11 +171,16 @@ class BdProc(object):
 
     def receiveSignal(self, signum, frame):
         """
-        bdPoc system signal handler
+        bdPoc system signal handler. Will obtain signal handling configuration from CSV line items
+        `sigTerm=`, & `sigNoLog=` parameters added to `cfgFile`. Parsed internally from `cfgDict`.
+        Parameters `signum` & `frame` are provided from `signal.signal()` trap when tripped.
         """
+        sigTerm = self.cfgDict['sigTerm'].split(',')
+        sigNoLog = self.cfgDict['sigNoLog'].split(',')
+
         if signum > 0:
             # Kill myTop on specific terminating signals
-            if signum == 1 or signum == 2:
+            if str(signum) in sigTerm:
                 self.myTop.terminate()
 
                 # Add to log for various terminating signals then exit
@@ -191,7 +192,7 @@ class BdProc(object):
                 exit()
 
             # Signals not requiring logging
-            if signum == 17 or signum == 28:
+            if str(signum) in sigNoLog:
                 pass
             
             # And log the rest but do not terminate
