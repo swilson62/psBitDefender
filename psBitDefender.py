@@ -31,7 +31,7 @@ Attributions:
 """
 
 # Imports
-import psutil, time, logging, os, signal, csv
+import psutil, time, logging, os, signal
 
 
 class BdProc(object):
