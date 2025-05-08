@@ -19,9 +19,11 @@ Program Name: PS BitDefender
 
 psBitDefender.py: Python script to provide adaptive top listing for BitDefender tasks.
 
-changeLog(v1.16.01):
-- Added proper signal handler for keyboard interrupt termination & all other signals.
-
+changeLog(v1.16.02):
+- Moved signal handler to object in bdProc() class.
+- Rewrote signal handling to only terminate on SIGHUP or SIGINT.
+- Stopped logging for SIGCHLD, & SIGWINCH
+- Logging for the rest without termination.
 
 Thoughts:
 - 
@@ -169,37 +171,42 @@ class BdProc(object):
             logging.info('TOP has been re-initialized showing new BD processes.')
 
 
-def main():
-    #Initialize signal handlers
-    def receiveSignal(signum, frame):
-        # Handle interrupts
+    def receiveSignal(self, signum, frame):
+        """
+        bdPoc system signal handler
+        """
         if signum > 0:
-            # End while loop & kill myTop on all signals
-            bdProc.myTop.terminate()
-    
-            # Handling for specific signals
-            if signum == 1:
-                logging.info('The `psBitDefender.py` script terminated by SIGHUP.')
-                exit()
-            if signum == 2:
-                logging.info('The `psBitDefender.py` script terminated by keyboard interrupt.')
-                print('Caught keyboard interrupt.')
-                exit()
-            if signum == 17:
-                # SIGCHLD sent to parent on close. No logging needed.
-                pass
-            
-            # And log the rest
-            else:
-                logging.info(f'Signal {signal.Signals(signum).name} received, causing termination.')
+            # Kill myTop on specific terminating signals
+            if signum == 1 or signum == 2:
+                self.myTop.terminate()
+
+                # Add to log for various terminating signals then exit
+                if signum == 1:
+                    logging.info('The `psBitDefender.py` script terminated by SIGHUP.')
+                if signum == 2:
+                    logging.info('The `psBitDefender.py` script terminated by keyboard interrupt.')
+                    print('Caught keyboard interrupt.')
                 exit()
 
-    # Set traps for interrupts
+            # Signals not requiring logging
+            if signum == 17 or signum == 28:
+                pass
+            
+            # And log the rest but do not terminate
+            else:
+                logging.info(f'Signal {signal.Signals(signum).name} received, causing no termination.')
+
+
+def main():
+    # Initialize BdProc instance
+    bdProc = BdProc()
+
+    # Set traps for signal interrupts
     for sigNumber in range(1, signal.NSIG):
         try:
             # Skip SIGKILL and SIGSTOP
             if sigNumber not in (signal.SIGKILL, signal.SIGSTOP, 32, 33):
-                signal.signal(sigNumber, receiveSignal)
+                signal.signal(sigNumber, bdProc.receiveSignal)
         except OSError:
             print(f"Signal {sigNumber} cannot be caught")
 
@@ -213,8 +220,7 @@ def main():
                         datefmt='%b %d %H:%M:%S', level=logging.DEBUG)
     logging.info('The `psBitDefender.py` script was initialized.')
 
-    # Initialize BdProc instance, & populate process lists
-    bdProc = BdProc()
+    # Populate process lists
     bdProc.psCnt = 0
     bdProc.getAllPids()
     bdProc.currBdProcs = bdProc.bdProcs.copy()
@@ -227,15 +233,6 @@ def main():
     while True:
         # Check for changes to pids & re-spawn as needed
         bdProc.reSpawnTop()
-
-    """
-    except KeyboardInterrupt:
-        # End while loop & kill myTop with keyboard interrupt
-        bdProc.myTop.terminate()
-        logging.info('The `psBitDefender.py` script terminated by keyboard interrupt.')
-        print('Caught keyboard interrupt.')
-        exit()
-    """
 
 
 if __name__ == '__main__':

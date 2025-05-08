@@ -1,3 +1,9 @@
+changeLog(v1.16.02):
+- Moved signal handler to object in bdProc() class.
+- Rewrote signal handling to only terminate on SIGHUP or SIGINT.
+- Stopped logging for SIGCHLD, & SIGWINCH
+- Logging for the rest without termination.
+
 changeLog(v1.16.01):
 - Added proper signal handler for keyboard interrupt termination & all other signals.
 
