@@ -19,9 +19,10 @@ Program Name: PS BitDefender
 
 psBitDefender.py: Python script to provide adaptive top listing for BitDefender tasks.
 
-changeLog(v1.16.03):
+changeLog(v1.16.04):
 - Rewrote signal handler to get handling details from cfgFile.
 - Removed unneeded CSV import.
+- Added strategic `os.system('clear')` calls to beautify.
 
 Thoughts:
 - 
@@ -127,6 +128,7 @@ class BdProc(object):
         for i in range(self.psCnt):
             topCmd.append(f'-p {self.currBdProcs[i]}')
 
+        os.system('clear')
         self.myTop = psutil.Popen(topCmd)
 
 
@@ -183,6 +185,7 @@ class BdProc(object):
             # Kill myTop on specific terminating signals
             if str(signum) in sigTerm:
                 self.myTop.terminate()
+                os.system('clear')
 
                 # Add to log for various terminating signals then exit
                 if signum == 1:

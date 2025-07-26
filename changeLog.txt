@@ -1,4 +1,7 @@
 changeLog(v1.16.03):
+- Added strategic `os.system('clear')` calls to beautify.
+
+changeLog(v1.16.03):
 - Rewrote signal handler to get handling details from cfgFile.
 - CSV import was added unnecessarily during previous changes. Removed.
 
